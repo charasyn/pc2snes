@@ -1,17 +1,10 @@
-#include <ps2.h>
-
-#define P_DATA  2
-#define P_CLOCK 3
-
-// pins 8-12
+// pins 8-13
 #define S_DATA  8
 #define S_LATCH 9
 #define S_CLOCK 10
 
-#define REVERSE_BUTTONS
 #define LED
-
-
+#define MAXFRAME 1024 // max num of bits in one clock
 
 #define checkLatch (PINB&(1<<(S_LATCH-8)))
 #define checkClock (PINB&(1<<(S_CLOCK-8)))
@@ -24,56 +17,16 @@ inline byte reverse(byte b) { // thanks "sth" from StackOverflow
    return b;
 }
 
-byte mdata[3];
-byte output[2];
-byte bitout[32];
-byte i;
-signed char x,y;
+byte bits[MAXFRAME];
+unsigned short i,count;
 #ifdef LED
 byte led;
 #endif
 
-PS2 mouse(P_CLOCK, P_DATA);
-void mouse_init()
-{
-  mouse.write(0xff);  // reset
-  mouse.read();
-  mouse.read();
-  mouse.read();
-  /* // wheel mouse mode
-  
-  mouse.write(0xf3);  // sample rate
-  mouse.read();  // ack
-  mouse.write(0xc8);  // sample rate
-  mouse.read();  // ack
-  
-  mouse.write(0xf3);  // sample rate
-  mouse.read();  // ack
-  mouse.write(0x64);  // sample rate
-  mouse.read();  // ack
-  
-  mouse.write(0xf3);  // sample rate
-  mouse.read();  // ack
-  mouse.write(0x50);  // sample rate
-  mouse.read();  // ack
-  
-  mouse.write(0xf2);  // get mouse id
-  mouse.read();  // ack
-  mouse.read();  // mouse id (we would care about this if we actually scrolled)*/
-  
-  delayMicroseconds(100);
-}
-void mouse_update()
-{
-  mouse.write(0xeb);
-  mouse.read();
-  mdata[0] = mouse.read();
-  mdata[1] = mouse.read();
-  mdata[2] = mouse.read();
-}
-
 void setup() {
-  mouse_init();
+  Serial.begin(112500);
+  Serial.print("INIT");
+  
   pinMode(S_DATA,OUTPUT);
   pinMode(S_LATCH,INPUT_PULLUP);
   pinMode(S_CLOCK,INPUT_PULLUP);
@@ -84,32 +37,32 @@ void setup() {
   pinMode(13,OUTPUT);
   #endif
   
-  for(i=0;i<16;i++){
-    bitout[i]=1;
+  for(i=0;i<MAXFRAME;i++){
+    bits[i]=1;
   }
+  count=0;
 }
 
 void loop() {
-  mouse_update();
-  
-  x=(signed char)mdata[1];
-  y=(signed char)mdata[2];
-  output[0]=reverse(~((min(abs(y),0x7f))|((y<0)?0x00:0x80))); //y
-  output[1]=reverse(~((min(abs(x),0x7f))|((x<0)?0x80:0x00))); //x
-  for(i=16;i<32;i++){
-    bitout[i]=output[(i>>3)&1]&(1<<(i&7));
+  Serial.print("N");
+  while(count==0){
+    while(!Serial.available());
+    if(Serial.read()=='r'){
+      count=Serial.read();
+      count=count||(Serial.read()<<8);
+      if(count>MAXFRAME){
+        Serial.print("H");
+        count=0;
+      }
+      byte tmp;
+      for(i=0;i<count;i++){
+        byte im8=i%8;
+        if(im8==0)
+          tmp=Serial.read();
+        bits[i]=(tmp&(1<<im8)!=0)?0:1;
+      }
+    }
   }
-  
-  #ifdef REVERSE_BUTTONS
-  bitout[8]=mdata[0]&0x01?0:1;
-  bitout[9]=mdata[0]&0x02?0:1;
-  #else
-  bitout[8]=mdata[0]&0x02?0:1;
-  bitout[9]=mdata[0]&0x01?0:1;
-  #endif
-  
-  bitout[15]=0;
-  i=0;
   
   #ifdef LED
   if (led) {
@@ -123,10 +76,11 @@ void loop() {
   while(!checkLatch);
   writeData(1);
   while(checkLatch);
-  for(;i<32;i++){
-    writeData(bitout[i]);
+  for(;i<count;i++){
+    writeData(bits[i]);
     while(checkClock);  //wait for falling
     while(!checkClock); //wait for rising
   }
+  writeData(1);
   interrupts();
 }
