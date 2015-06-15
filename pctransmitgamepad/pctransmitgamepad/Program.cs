@@ -14,48 +14,47 @@ namespace pctransmitgamepad
         static byte[] MakeBufferFromGPState(GamePadState gpSt)
         {
             var b = gpSt.Buttons;
-            var buffer = new byte[5];
+            var buffer = new byte[4];
             buffer[0] = (byte)'r';
-            buffer[1] = 0x10; // length 1
-            buffer[2] = 0;    // length 2 (little endian)
+            buffer[1] = 0x10; // length
+            buffer[2] = 0;
             buffer[3] = 0;
-            buffer[4] = 0;
 
-            if (b.A == ButtonState.Pressed)     buffer[3] |= 0x01;
-            if (b.X == ButtonState.Pressed)     buffer[3] |= 0x02;
-            if (b.Start == ButtonState.Pressed) buffer[3] |= 0x04;
-            if (b.Back == ButtonState.Pressed)  buffer[3] |= 0x08;
+            if (b.A == ButtonState.Pressed)     buffer[2] |= 0x01;
+            if (b.X == ButtonState.Pressed)     buffer[2] |= 0x02;
+            if (b.Start == ButtonState.Pressed) buffer[2] |= 0x04;
+            if (b.Back == ButtonState.Pressed)  buffer[2] |= 0x08;
 
-            if (b.B == ButtonState.Pressed)     buffer[4] |= 0x01;
-            if (b.Y == ButtonState.Pressed)     buffer[4] |= 0x02;
+            if (b.B == ButtonState.Pressed)     buffer[3] |= 0x01;
+            if (b.Y == ButtonState.Pressed)     buffer[3] |= 0x02;
 
             if (gpStick)
             {
                 var s = gpSt.ThumbSticks;
-                if (s.Left.Y > 0.4)  buffer[3] |= 0x10;
-                if (s.Left.Y < -0.4) buffer[3] |= 0x20;
-                if (s.Left.X < -0.4) buffer[3] |= 0x40;
-                if (s.Left.X > 0.4)  buffer[3] |= 0x80;
+                if (s.Left.Y > 0.4)  buffer[2] |= 0x10;
+                if (s.Left.Y < -0.4) buffer[2] |= 0x20;
+                if (s.Left.X < -0.4) buffer[2] |= 0x40;
+                if (s.Left.X > 0.4)  buffer[2] |= 0x80;
             }
             else
             {
                 var d = gpSt.DPad;
-                if (d.IsUp)     buffer[3] |= 0x10;
-                if (d.IsDown)   buffer[3] |= 0x20;
-                if (d.IsLeft)   buffer[3] |= 0x40;
-                if (d.IsRight)  buffer[3] |= 0x80;
+                if (d.IsUp)     buffer[2] |= 0x10;
+                if (d.IsDown)   buffer[2] |= 0x20;
+                if (d.IsLeft)   buffer[2] |= 0x40;
+                if (d.IsRight)  buffer[2] |= 0x80;
             }
 
             if (gpTrigger)
             {
                 var t = gpSt.Triggers;
-                if (t.Left > 0.4)   buffer[4] |= 0x4;
-                if (t.Right > 0.4)  buffer[4] |= 0x8;
+                if (t.Left > 0.4)   buffer[3] |= 0x4;
+                if (t.Right > 0.4)  buffer[3] |= 0x8;
             }
             else
             {
-                if (b.LeftShoulder == ButtonState.Pressed)  buffer[4] |= 0x4;
-                if (b.RightShoulder == ButtonState.Pressed) buffer[4] |= 0x8;
+                if (b.LeftShoulder == ButtonState.Pressed)  buffer[3] |= 0x4;
+                if (b.RightShoulder == ButtonState.Pressed) buffer[3] |= 0x8;
             }
 
             return buffer;
@@ -104,17 +103,25 @@ namespace pctransmitgamepad
                 bool go = true;
                 while (go)
                 {
-                    if(sp.ReadChar()=='N')
+                    var ti = new System.Diagnostics.Stopwatch();
+                    ti.Start();
+                    var c = (char)sp.ReadChar();
+                    ti.Stop();
+                    var bufStr = string.Format("{0:F2}",ti.Elapsed.TotalMilliseconds) + " ";
+                    if(c=='N')
                     {
+                        ti.Restart();
                         var buffer = MakeBufferFromGPState(GamePad.GetState(gpIndex));
                         sp.Write(buffer, 0, buffer.Length);
-                        var bufStr = sp.ReadExisting() + ' ';
                         sp.DiscardInBuffer();
+                        ti.Stop();
+                        bufStr += string.Format("{0:F2}", ti.Elapsed.TotalMilliseconds) + " ";
                         for (int i = 0; i < buffer.Length; i++)
                         {
                             bufStr += string.Format("{0:X}", buffer[i])+' ';
                         }
-                            Console.WriteLine(bufStr);
+                        Console.Clear();
+                        Console.WriteLine(bufStr);
                     }
                 }
             }

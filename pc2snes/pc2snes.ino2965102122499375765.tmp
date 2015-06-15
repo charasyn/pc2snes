@@ -4,7 +4,6 @@
 #define S_CLOCK 10
 
 #define LED
-//#define DEBUGLED
 
 #define checkLatch (PINB&(1<<(S_LATCH-8)))
 #define checkClock (PINB&(1<<(S_CLOCK-8)))
@@ -47,11 +46,18 @@ void loop() {
       while(!Serial.available()){}
       tmp=Serial.read();
     }
-    bits[i]=!(tmp&(1<<im8));
+    bits[i]=tmp&(1<<im8);
   }
+  /*
+  #ifdef LED
+  if (led) {
+    led=0;writeLED(0);
+  } else {
+    led=1;writeLED(1);
+  }
+  #endif*/
+  i=0;
   
-  
-  #ifdef DEBUGLED
   writeLED(1);
   delay(1000);
   
@@ -61,20 +67,9 @@ void loop() {
     writeLED(0);
     delay(250);
   }
-  #else
-  #ifdef LED
-  if (led) {
-    led=0;writeLED(0);
-  } else {
-    led=1;writeLED(1);
-  }
-  #endif
-  #endif
-  
-  i=0;
   
   noInterrupts();
-  
+  /*
   while(!checkLatch);
   writeData(1);
   while(checkLatch);
@@ -83,6 +78,6 @@ void loop() {
     while(checkClock);  //wait for falling
     while(!checkClock); //wait for rising
   }
-  
+  */
   interrupts();
 }

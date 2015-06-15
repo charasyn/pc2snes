@@ -4,16 +4,20 @@
 #define S_CLOCK 10
 
 #define LED
-//#define DEBUGLED
 
 #define checkLatch (PINB&(1<<(S_LATCH-8)))
 #define checkClock (PINB&(1<<(S_CLOCK-8)))
 inline void writeData(byte x){ if(x) PORTB|=(1<<(S_DATA-8)); else PORTB&=~(1<<(S_DATA-8)); }
-inline void writeLED(byte x){ if(x) PORTB|=(1<<(13-8)); else PORTB&=~(1<<(13-8)); }
 
-byte bits[16];
-byte i,im8;
-byte tmp;
+inline byte reverse(byte b) { // thanks "sth" from StackOverflow
+   b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+   b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+   b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+   return b;
+}
+
+byte bits[256];
+byte i,count;
 #ifdef LED
 byte led;
 #endif
@@ -31,58 +35,50 @@ void setup() {
   pinMode(13,OUTPUT);
   #endif
   
-  for(i=0;i<16;i++){
-    bits[i]=0;
+  for(i=0;i<255;i++){
+    bits[i]=1;
   }
+  count=0;
 }
 
 void loop() {
-  Serial.print("N");
-  while(Serial.read()!='r'){}
-  while(!Serial.available()){}
-  Serial.read();
-  for(i=0;i<16;i++){
-    im8=i%8;
-    if(im8==0){
-      while(!Serial.available()){}
-      tmp=Serial.read();
+  while(count==0){
+    Serial.print("N");
+    delayMicroseconds(4000);
+    if(Serial.read()=='r'){
+      count=Serial.read();
+      if(count==255)
+        continue;
+      byte tmp;
+      for(i=0;i<count;i++){
+        byte im8=i%8;
+        if(im8==0)
+          tmp=Serial.read();
+        bits[i]=(tmp&(1<<im8)!=0)?0:1;
+      }
     }
-    bits[i]=!(tmp&(1<<im8));
   }
   
-  
-  #ifdef DEBUGLED
-  writeLED(1);
-  delay(1000);
-  
-  for(i=0;i<16;i++){
-    writeLED(bits[i]);
-    delay(250);
-    writeLED(0);
-    delay(250);
-  }
-  #else
   #ifdef LED
   if (led) {
-    led=0;writeLED(0);
+    led=0;PORTB&=~(1<<(13-8));
   } else {
-    led=1;writeLED(1);
+    led=1;PORTB|=1<<(13-8);
   }
   #endif
-  #endif
-  
-  i=0;
   
   noInterrupts();
-  
   while(!checkLatch);
+  i=0;
   writeData(1);
   while(checkLatch);
-  for(;i<16;i++){
+  for(;i<count;i++){
     writeData(bits[i]);
     while(checkClock);  //wait for falling
     while(!checkClock); //wait for rising
   }
-  
+  writeData(1);
   interrupts();
+  
+  count=0;
 }
