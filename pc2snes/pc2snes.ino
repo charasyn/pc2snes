@@ -25,7 +25,6 @@ byte led;
 
 void setup() {
   Serial.begin(112500);
-  Serial.print("INIT");
   
   pinMode(S_DATA,OUTPUT);
   pinMode(S_LATCH,INPUT_PULLUP);
@@ -44,12 +43,12 @@ void setup() {
 }
 
 void loop() {
-  Serial.print("N");
   while(count==0){
-    while(!Serial.available());
+    Serial.print("N");
+    delayMicroseconds(800);
     if(Serial.read()=='r'){
       count=Serial.read();
-      count=count||(Serial.read()<<8);
+      count=count|(Serial.read()<<8);
       if(count>MAXFRAME){
         Serial.print("H");
         count=0;
@@ -76,11 +75,13 @@ void loop() {
   while(!checkLatch);
   writeData(1);
   while(checkLatch);
-  for(;i<count;i++){
+  for(i=0;i<count;i++){
     writeData(bits[i]);
     while(checkClock);  //wait for falling
     while(!checkClock); //wait for rising
   }
   writeData(1);
   interrupts();
+  
+  count=0;
 }

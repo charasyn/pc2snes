@@ -1,1 +1,9 @@
 D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\pctransmitgamepad.exe.config
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\pctransmitgamepad.exe
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\pctransmitgamepad.pdb
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\OpenTK.dll
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\OpenTK.pdb
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\bin\Debug\OpenTK.xml
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\obj\Debug\pctransmitgamepad.csprojResolveAssemblyReference.cache
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\obj\Debug\pctransmitgamepad.exe
+D:\work\pc2snes\pctransmitgamepad\pctransmitgamepad\obj\Debug\pctransmitgamepad.pdb
