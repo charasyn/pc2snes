@@ -1,4 +1,8 @@
-/* Teensy RawHID example
+/* receiver.c
+ * The AVR part of pc2snes
+ * Based on:
+ * 
+ * Teensy RawHID example
  * http://www.pjrc.com/teensy/rawhid.html
  * Copyright (c) 2009 PJRC.COM, LLC
  * 
@@ -53,6 +57,8 @@ int main(void)
 	int8_t r;
 
 	// set for 16 MHz clock
+	// idk if this is necessary but i'm keeping it here anyways
+	// this is the only piece of PJRC code still in this file
 	CPU_PRESCALE(0);
 
 	// Initialize the USB, and then wait for the host to set configuration.
@@ -63,37 +69,35 @@ int main(void)
 
 	// configure pins
 	DDRC = _BV(PC7); // only PC7 output
-	DDRD = _BV(PD6); // only PD6 output
-	
+	DDRD = _BV(PD6); // only PD6 output (led)
+
 	led_low;
-	
+
 	for(r=0;r<BUFFER_SIZE;r++){
 		buffer0[r]=0;
 		buffer1[r]=0;
 	}
-	
+
 	// Wait an extra second for the PC's operating system to load drivers
 	// and do whatever it does to actually be ready for input
+	// I don't think we have to wait for 1 second (maybe on windows?)
 	_delay_ms(1000);
-	
+
 	cli();
 	// configure interrupt
-	EIFR  = 0x4f; // clear interrupt flags 
-	EICRB = 0;
+	EIFR  = 0x4f;      // clear interrupt flags 
+	EICRB = 0;         // we don't have to clear this, but we do anyways
 	EICRA = 0x02;      // interrupt on falling edge of INT0
 	EIMSK = _BV(INT0); // enable only INT0 (D0 on ATmega32u4)
-	
-	led_high;
+
 	sei();
 	
 	while(1){
-		// if received data, do something with it
 		r = seraph_receive(sel_buf?buffer1:buffer0, 8);
-		//r=1;(sel_buf?buffer1:buffer0)[0]++;
 		if(r>0){
-			// update LCD? if I get the LCD lib
+			// update LCD? if I get the LCD lib off my other comp
 			
-			led_toggle;
+			led_high;
 			sel_buf=!sel_buf;
 		}
 	}
@@ -104,7 +108,9 @@ uint8_t wait_clock(void){
 	static uint8_t c8;
 	c8=0;
 	for(;(clk)&&(c8<16);c8++){
-		_delay_us(0.5);
+		_delay_us(0.5); // we delay by a short amount of time to avoid
+		                //   missing the edge of the clock cycle
+		                // the time could be shorter but, no need :)
 	}
 	if(clk)
 		return 1;
@@ -119,17 +125,24 @@ uint8_t wait_clock(void){
 
 ISR(INT0_vect)
 {
+	// do these have to be static? probably not
 	static uint8_t bits, bytes, tmp;
+	
+	// this interrupt only triggers on the falling edge of latch
+	//   so we don't have to check the latch pin or anything
 	
 	bits=0;
 	bytes=0;
-	
+
+	led_low;
+
 	// if sel_buf then we were reading into buffer 1
-	// therefore access buffer 0
+	//   therefore access buffer 0
 	if(sel_buf){
 		tmp=buffer0[0];
 		while(bytes<MAX_BYTES){ // this could be done faster in assembly
-			// but it won't be necessary
+			                    //   but it's not necessary
+			// push the bits out
 			if(tmp&0x80)
 				data_low;
 			else
@@ -164,5 +177,4 @@ ISR(INT0_vect)
 		}
 	}
 	data_low;
-	//led_toggle;
 }

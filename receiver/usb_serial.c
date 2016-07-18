@@ -42,8 +42,8 @@
 
 // You can change these to give your code its own name.  On Windows,
 // these are only used before an INF file (driver install) is loaded.
-#define STR_MANUFACTURER	L"Your Name"
-#define STR_PRODUCT		L"USB Serial"
+#define STR_MANUFACTURER	L"cooprocks123e"
+#define STR_PRODUCT		L"pc2snes receiver"
 
 // All USB serial devices are supposed to have a serial number
 // (according to Microsoft).  On windows, a new COM port is created
@@ -60,7 +60,7 @@
 // Udev rules (in /etc/udev/rules.d) can define persistent device
 // names linked to this serial number, as well as permissions, owner
 // and group settings.
-#define STR_SERIAL_NUMBER	L"12345"
+#define STR_SERIAL_NUMBER	L"65816"
 
 // Mac OS-X and Linux automatically load the correct drivers.  On
 // Windows, even though the driver is supplied by Microsoft, an

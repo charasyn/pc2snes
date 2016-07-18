@@ -11,11 +11,14 @@
 
 #include <termios.h>
 
+// keep track of what buttons have been pushed down
+// necessary because the device gives us only events
 struct JoypadState { // conf. for PS4
 	uint8_t button[13];
 	int16_t axis[8]; // we only care up to the DPAD
 } jss;
 
+// struct used for getting input information from device file
 struct JSEvent {
 	unsigned int time;    /* event timestamp in milliseconds */
 	short value;          /* value */
@@ -23,11 +26,12 @@ struct JSEvent {
 	unsigned char number; /* axis/button number */
 } jse;
 
-// serap.h transmit end
+// seraph protocol defines
 #define SERAPH_HEADER_LEN 8
 #define BUFLEN 32
 #define PNDLEN BUFLEN-SERAPH_HEADER_LEN
 #define DATLEN 8
+
 uint8_t buffer[BUFLEN];
 
 void poll(int fd){
@@ -46,19 +50,25 @@ void poll(int fd){
 		}
 	}
 	
+	// we send the data in the format the SNES expects it
+	// this reduces processing on the hardware end
+	// defines to make it easier to build output
 	#define tb(x)  ((x)?1:0)
 	#define pos(x) (x>10000)
 	#define neg(x) (x<-10000)
 	uint8_t tmp;
+	
+	// the button layout has been hardcoded in to simplify everything
+	// it is designed for use with a PS4 controller (that's what I got)
 	// BYetUDLR
 	tmp=       tb(jss.button[1]);
 	tmp=tmp<<1|tb(jss.button[0]);
 	tmp=tmp<<1|tb(jss.button[8]);
 	tmp=tmp<<1|tb(jss.button[9]);
-	tmp=tmp<<1|neg(jss.axis[1])|neg(jss.axis[7]);
-	tmp=tmp<<1|pos(jss.axis[1])|pos(jss.axis[7]);
-	tmp=tmp<<1|neg(jss.axis[0])|neg(jss.axis[6]);
-	tmp=tmp<<1|pos(jss.axis[0])|pos(jss.axis[6]);
+	tmp=tmp<<1|neg(jss.axis[1])|neg(jss.axis[7]); // dpad shows up as
+	tmp=tmp<<1|pos(jss.axis[1])|pos(jss.axis[7]); // 2 axes, so we check
+	tmp=tmp<<1|neg(jss.axis[0])|neg(jss.axis[6]); // both the left stick
+	tmp=tmp<<1|pos(jss.axis[0])|pos(jss.axis[6]); // and the dpad
 	buffer[SERAPH_HEADER_LEN]=tmp;
 	
 	// AXLR0000
@@ -68,6 +78,7 @@ void poll(int fd){
 	tmp=tmp<<1|tb(jss.button[5])|tb(jss.button[7]);
 	tmp<<=4;
 	buffer[SERAPH_HEADER_LEN+1]=tmp;
+	
 	#undef tb
 	#undef pos
 	#undef neg
@@ -75,7 +86,6 @@ void poll(int fd){
 
 int main(int argc, char** argv)
 {
-	int r;
 	int jfd,sfd;
 	
 	jfd = open("/dev/input/js0",O_RDONLY|O_NONBLOCK);
@@ -84,9 +94,8 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	printf("js0 opened\n");
-		
-	struct termios oldtio,newtio;
 	
+	struct termios oldtio,newtio;
 	sfd = open("/dev/ttyACM0", O_RDWR | O_NOCTTY); 
 	if (sfd <0){
 		printf("Unable to open serial IO\n");
@@ -106,6 +115,7 @@ int main(int argc, char** argv)
 	// this shouldn't matter because we never read
 	newtio.c_cc[VTIME]    = 0; // inter-character timer unused
 	newtio.c_cc[VMIN]     = 5; // blocking read until 5 chars received
+	
 	tcflush(sfd, TCIFLUSH);
 	tcsetattr(sfd,TCSANOW,&newtio);
 	
@@ -114,12 +124,12 @@ int main(int argc, char** argv)
 	memset(buffer,0,BUFLEN);
 	memset(&jss,0,sizeof(struct JoypadState));
 	
-	buffer[0]='S';
-	buffer[1]='E';
+	buffer[0]='S'; // seraph header
+	buffer[1]='E'; // first 4 bytes are SER af
 	buffer[2]='R';
 	buffer[3]=0xaf;
-	buffer[4]=(uint8_t)PNDLEN;
-	buffer[5]=(uint8_t)DATLEN;
+	buffer[4]=(uint8_t)PNDLEN; // then the length of padding + data
+	buffer[5]=(uint8_t)DATLEN; // and the length of just the data
 	
 	printf("Starting communication\nPress the PS button (12) to exit...\n");
 	while (1) {
@@ -128,9 +138,15 @@ int main(int argc, char** argv)
 		//if(buffer[8]) printf("%x\t",buffer[8]);
 		if(jss.button[12])
 			break;
-		usleep(990);
+		usleep(990); // hopefully this won't kill the CPU anymore?
+		             // we still have a polling rate of about 1000 Hz
+		             // so it's plenty fast but doesn't hog as much CPU
 	}
-	tcsetattr(sfd,TCSANOW,&oldtio);
-	close(sfd);
-	close(jfd);
+	
+	tcsetattr(sfd,TCSANOW,&oldtio); // serial cleanup (necessary?)
+	                                // I'm not too sure about half the
+	                                // serial stuff but it works
+	
+	close(sfd); // this is technically unnecessary because
+	close(jfd); // the kernel does it anyway, but it can't hurt :P
 }
