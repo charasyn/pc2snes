@@ -1,2 +1,3 @@
 # pc2snes
-Arduino sketch letting you send SNES controller inputs over serial
+Program written for AVR that allows you to send SNES controller inputs
+over USB
