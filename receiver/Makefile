@@ -1,6 +1,7 @@
 # Hey Emacs, this is a -*- makefile -*-
+# Makefile for pc2snes receiver Teensy version
 #----------------------------------------------------------------------------
-# WinAVR Makefile Template written by Eric B. Weddington, Jörg Wunsch, et al.
+# WinAVR Makefile Template written by Eric B. Weddington, JÃ¶rg Wunsch, et al.
 #
 # Released to the Public Domain
 #
@@ -45,9 +46,8 @@ TARGET = receiver
 
 
 # List C source files here. (C dependencies are automatically generated.)
-SRC =	$(TARGET).c \
-	usb_serial.c
-
+SRC =	usb_serial.c
+INOSRC = receiver.ino
 
 # MCU name, you MUST set this to match the board you are using
 # type "make clean" after changing this, so all files will be rebuilt
@@ -155,7 +155,7 @@ CFLAGS += -Wstrict-prototypes
 CFLAGS += -Wundef
 CFLAGS += -Wunreachable-code
 CFLAGS += -Wsign-compare
-CFLAGS += -Wa,-adhlns=$(<:%.c=$(OBJDIR)/%.lst)
+#CFLAGS += -Wa,-adhlns=$(<:%.c=$(OBJDIR)/%.lst)
 CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
 #CFLAGS += -Werror
@@ -372,10 +372,10 @@ MSG_CREATING_LIBRARY = Creating library:
 
 
 # Define all object files.
-OBJ = $(SRC:%.c=$(OBJDIR)/%.o) $(CPPSRC:%.cpp=$(OBJDIR)/%.o) $(ASRC:%.S=$(OBJDIR)/%.o) 
+OBJ = $(SRC:%.c=$(OBJDIR)/%.o) $(CPPSRC:%.cpp=$(OBJDIR)/%.o) $(ASRC:%.S=$(OBJDIR)/%.o) $(INOSRC:%.ino=$(OBJDIR)/%.o)
 
 # Define all listing files.
-LST = $(SRC:%.c=$(OBJDIR)/%.lst) $(CPPSRC:%.cpp=$(OBJDIR)/%.lst) $(ASRC:%.S=$(OBJDIR)/%.lst) 
+LST = $(SRC:%.c=$(OBJDIR)/%.lst) $(CPPSRC:%.cpp=$(OBJDIR)/%.lst) $(ASRC:%.S=$(OBJDIR)/%.lst) $(INOSRC:%.ino=$(OBJDIR)/%.lst)
 
 
 # Compiler flags to generate dependency files.
@@ -387,7 +387,7 @@ GENDEPFLAGS = -MMD -MP -MF .dep/$(@F).d
 ALL_CFLAGS = -mmcu=$(MCU) -I. $(CFLAGS) $(GENDEPFLAGS)
 ALL_CPPFLAGS = -mmcu=$(MCU) -I. -x c++ $(CPPFLAGS) $(GENDEPFLAGS)
 ALL_ASFLAGS = -mmcu=$(MCU) -I. -x assembler-with-cpp $(ASFLAGS)
-
+ALL_INOFLAGS = $(ALL_CFLAGS) -DTEENSY
 
 
 
@@ -548,6 +548,10 @@ extcoff: $(TARGET).elf
 	@echo $(MSG_LINKING) $@
 	$(CC) $(ALL_CFLAGS) $^ --output $@ $(LDFLAGS)
 
+$(OBJDIR)/%.o : %.ino
+	@echo
+	@echo $(MSG_COMPILING) $<
+	$(CC) -c $(ALL_INOFLAGS) -x c $< -o $@ 
 
 # Compile: create object files from C source files.
 $(OBJDIR)/%.o : %.c

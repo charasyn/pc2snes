@@ -88,7 +88,12 @@ int main(int argc, char** argv)
 {
 	int jfd,sfd;
 	
-	jfd = open("/dev/input/js0",O_RDONLY|O_NONBLOCK);
+	char *jsdevice="/dev/input/js0";
+
+	if(argc>1)
+		jsdevice=argv[1];
+	
+	jfd = open(jsdevice,O_RDONLY|O_NONBLOCK);
 	if(jfd<0){
 		printf("Couldn't open joystick\n");
 		return 1;
